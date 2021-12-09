@@ -1,0 +1,104 @@
+---
+title: "Investigating COVID-19 Virus Trends"
+author: "Stephan Hertweck"
+date: "3 12 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##
+
+The Covid-19 pandemic has confronted the international community with increased demands for disease surveillance of the general population. Widespread testing has become one of the most important tools to monitor disease spread, but variability in testing capacity between countries makes comparison less straightforward.
+
+In this document I aim to compare the country-specific incidence against that nation's testing frequency.
+
+```{r, message=FALSE}
+# load data
+library(readr)
+library(dplyr)
+
+covid_df <- read_csv("covid19_data.csv")
+
+dim(covid_df)
+
+vector_cols <- colnames(covid_df)
+
+head(data)
+
+glimpse(covid_df)
+
+```
+
+# Data preparation
+Filter the rows related to "All States" from the Province_State column and remove the Province_State column from covid_df dataframe.
+
+```{r, message=FALSE}
+covid_df_all_states <- covid_df %>% filter(Province_State == "All States") %>% select(-Province_State)
+
+
+# Keep only daily data (rather than cumulative)
+
+covid_df_all_states_daily <- select(covid_df_all_states, Date, Country_Region, active, hospitalizedCurr, daily_tested, daily_positive)
+
+#Sum cases for each country and sort in descending fashion
+
+covid_df_all_states_daily_sum <- covid_df_all_states_daily %>% group_by(Country_Region) %>% summarize(tested = sum(daily_tested), positive = sum(daily_positive), active = sum(active), hospitalized = sum(hospitalizedCurr)) %>% arrange(-tested)
+
+# Top 10
+
+covid_top_10 <-  head(covid_df_all_states_daily_sum, 10)
+
+
+# Identifying the highest against positive cases 
+
+countries <- covid_top_10$Country_Region
+tested_cases <-  covid_top_10$tested
+positive_cases <- covid_top_10$positive
+active_cases <- covid_top_10$active
+hospitalized_cases <-  covid_top_10$hospitalized
+
+names(tested_cases) <- countries
+names(positive_cases) <- countries
+names(active_cases) <- countries
+names(hospitalized_cases) <- countries
+
+# top 3 countries
+
+ratio <- positive_cases/tested_cases
+ratio <-  sort(ratio, decreasing = TRUE)
+
+positive_tested_top_3 <- head(ratio, 3)
+
+# summarize results
+
+united_kingdom <-  c(0.11, 1473672, 166909, 0, 0)
+united_states <- c(0.10, 17282363, 1877179, 0, 0)
+turkey <- c(0.08, 2031192, 163941, 2980960, 0)
+
+covid_mat <-  rbind(united_kingdom, united_states, turkey)
+
+colnames(covid_mat) <- c("Ratio", "tested", "positive", "active", "hospitalized")
+
+print(covid_mat)
+
+
+# oraganize summary
+dfs <-  list(c(covid_df, covid_df_all_states, covid_df_all_states_daily, covid_top_10))
+matrx <-  list(covid_mat)
+vectors <-  list(c(vector_cols, countries))
+
+data_structure_list <-  list(c(dataframes = dfs, matrices =  matrx, vectors = vectors))
+
+question <- "Which countries have had the highest number of positive cases against the number of tests?"
+answer <-  c("Positive tested cases" = positive_tested_top_3)
+
+covid_analysis_list <- list(question, answer, data_structure_list)
+
+print(covid_analysis_list[2])
+
+````
+
+The results of this quick analysis show that the UK, the US and turkey have had the highest ratio of positive Covid-19 patients to testing frequency.
